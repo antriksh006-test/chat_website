@@ -409,6 +409,11 @@
         .file-upload-btn:hover, .emoji-btn:hover {
             background: var(--bg-color);
         }
+        .file-upload-btn.has-file {
+            background: #28a745 !important;
+            color: white !important;
+            border-color: #28a745 !important;
+        }
 
         .input-row button {
             width: auto;
@@ -475,8 +480,11 @@
                 padding: 15px;
                 flex-shrink: 0;
             }
+            body.in-chat #left-panel {
+                display: none; /* Hide active rooms on mobile when inside a chat room */
+            }
             #right-panel {
-                padding: 15px;
+                padding: 10px;
                 flex: 1;
                 min-height: 0;
             }
@@ -484,10 +492,7 @@
                 flex-direction: column;
             }
             .roster-sidebar {
-                max-width: none;
-                max-height: 120px;
-                order: -1;
-                flex-shrink: 0;
+                display: none; /* Hide users online on mobile to maximize chat space */
             }
             #setup {
                 flex-direction: column;
@@ -577,8 +582,8 @@
                                 </div>
 
                                 <div class="file-upload">
-                                    <div class="file-upload-btn">📷</div>
-                                    <input type="file" id="image_input" accept="image/*">
+                                    <div class="file-upload-btn" id="upload-btn">📷</div>
+                                    <input type="file" id="image_input" accept="image/*" onchange="if(this.files.length > 0) { document.getElementById('upload-btn').classList.add('has-file'); document.getElementById('upload-btn').innerText = '🖼️ ✓'; } else { document.getElementById('upload-btn').classList.remove('has-file'); document.getElementById('upload-btn').innerText = '📷'; }">
                                 </div>
                                 <button onclick="sendMessage()">Send</button>
                             </div>
@@ -741,9 +746,12 @@
 
         function leaveRoom() {
             socket.emit('leave', { username: username, room: room });
+            document.body.classList.remove('in-chat');
             document.getElementById('chat').style.display = 'none';
             document.getElementById('setup').style.display = 'flex';
             document.getElementById('messages').innerHTML = '';
+            
+            // Clear so auto-reconnect doesn't put us back in
             username = null;
             room = null;
         }
@@ -767,6 +775,8 @@
                 };
                 reader.readAsDataURL(file);
                 fileInput.value = ''; 
+                document.getElementById('upload-btn').classList.remove('has-file');
+                document.getElementById('upload-btn').innerText = '📷';
             }
 
             // Handle Text
@@ -838,6 +848,7 @@
         });
 
         socket.on('chat_history', function (history) {
+            document.body.classList.add('in-chat');
             document.getElementById('setup').style.display = 'none';
             document.getElementById('chat').style.display = 'flex';
             document.getElementById('room-header').innerText = room;
