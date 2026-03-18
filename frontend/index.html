@@ -58,6 +58,9 @@
             font-style: italic;
         }
         @media (max-width: 600px) {
+            div[style*="gap: 20px"] {
+                flex-direction: column;
+            }
             body {
                 flex-direction: column;
             }
@@ -122,19 +125,28 @@
             </div>
         </div>
 
-        <div id="chat" style="display:none;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 id="room-header"></h3>
+        <div id="chat" style="display:none; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px;">
+                <h3 id="room-header" style="margin: 0;"></h3>
                 <button onclick="leaveRoom()"
-                    style="background: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Leave Room</button>
+                    style="background: #dc3545; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold;">Leave Room</button>
             </div>
 
-            <div id="messages"></div>
-
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input id="my_message" placeholder="Type message..." style="flex: 2; padding: 5px;">
-                <input type="file" id="image_input" accept="image/*" style="flex: 1;">
-                <button onclick="sendMessage()" style="padding: 5px 15px;">Send</button>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 3; display: flex; flex-direction: column;">
+                    <div id="messages"></div>
+                    <div id="typing_indicator" style="color: gray; font-style: italic; font-size: 12px; height: 16px; margin-bottom: 5px;"></div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input id="my_message" placeholder="Type message..." style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <input type="file" id="image_input" accept="image/*" style="flex: 1;">
+                        <button onclick="sendMessage()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+                    </div>
+                </div>
+                
+                <div style="flex: 1; border: 1px solid #ccc; border-radius: 5px; background: #fafafa; padding: 10px; min-width: 150px; max-height: 350px; overflow-y: auto;">
+                    <h4 style="margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-align: center;">Users Online</h4>
+                    <ul id="roster" style="list-style: none; padding: 0; margin: 0;"></ul>
+                </div>
             </div>
         </div>
     </div>
@@ -187,6 +199,37 @@
         }
 
         var userColor;
+        var notifySound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+        var typingTimeout;
+
+        document.getElementById('my_message').addEventListener('input', function() {
+            socket.emit('typing', {is_typing: true});
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(function() {
+                socket.emit('typing', {is_typing: false});
+            }, 1500);
+        });
+
+        socket.on('typing', function(data) {
+            var typDiv = document.getElementById('typing_indicator');
+            if (data.is_typing) {
+                typDiv.innerText = data.user + " is typing...";
+            } else {
+                typDiv.innerText = "";
+            }
+        });
+
+        socket.on('room_users', function(users) {
+            var roster = document.getElementById('roster');
+            if (!roster) return;
+            roster.innerHTML = '';
+            users.forEach(function(u) {
+                var li = document.createElement('li');
+                li.innerHTML = `<span style="color: ${u.color}; font-weight: bold; font-size: 18px; vertical-align: -2px;">•</span> <span style="font-size: 14px;">${u.name}</span>`;
+                li.style.marginBottom = "5px";
+                roster.appendChild(li);
+            });
+        });
 
         // JOIN ROOM
         function joinRoom() {
@@ -249,14 +292,19 @@
             var p = document.createElement('p');
             var messagesDiv = document.getElementById('messages');
             var c = data.color || '#000000';
+            var ts = data.timestamp ? `<span style="font-size: 10px; color: #999; margin-left: 8px;">${data.timestamp}</span>` : "";
 
             if (typeof data === 'string') {
                 p.innerHTML = `<span class="system-msg">${data}</span>`;
             } else {
                 if (data.type === 'image') {
-                    p.innerHTML = `<b style="color: ${c}">${data.user}:</b><br><img src="${data.msg}" class="chat-image">`;
+                    p.innerHTML = `<b style="color: ${c}">${data.user}</b>${ts}<b>:</b><br><img src="${data.msg}" class="chat-image">`;
                 } else {
-                    p.innerHTML = `<b style="color: ${c}">${data.user}:</b> ${data.msg}`;
+                    var urlRegex = /(https?:\/\/[^\s]+)/g;
+                    var formattedText = data.msg.replace(urlRegex, function(url) {
+                        return '<a href="' + url + '" target="_blank" style="color: #007bff; text-decoration: underline;">' + url + '</a>';
+                    });
+                    p.innerHTML = `<b style="color: ${c}">${data.user}</b>${ts}<b>:</b> ${formattedText}`;
                 }
             }
 
@@ -267,6 +315,9 @@
         // RECEIVE LIVE MESSAGE
         socket.on('message', function (data) {
             appendMessage(data);
+            if (data.user && data.user !== username) {
+                notifySound.play().catch(function(e) {});
+            }
         });
 
         // RECEIVE CHAT HISTORY ON JOIN

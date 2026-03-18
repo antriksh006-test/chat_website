@@ -2,14 +2,29 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 import os 
+from datetime import datetime
+import re
+
 app = Flask(__name__)
 CORS(app)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a-very-hard-to-guess-string')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-room_info = {} # Maps room_name -> {'is_private': bool, 'password': str, 'limit': int, 'users': set()}
+room_info = {} # Maps room_name -> {'is_private': bool, 'password': str, 'limit': int, 'users': {username: color}}
 room_history = {} # Stores latest 50 messages per room
-session_users = {} # Maps connections: {'sid': {'username': 'u', 'room': 'r'}}
+session_users = {} # Maps connections: {'sid': {'username': 'u', 'room': 'r', 'color': 'color'}}
+
+def filter_profanity(text):
+    bad_words = ['fuck', 'shit', 'bitch', 'asshole', 'crap']
+    for word in bad_words:
+        pattern = re.compile(re.escape(word), re.IGNORECASE)
+        text = pattern.sub('*'*len(word), text)
+    return text
+
+def broadcast_room_users(room):
+    if room in room_info:
+        users_list = [{'name': u, 'color': room_info[room]['users'][u]} for u in room_info[room]['users']]
+        socketio.emit('room_users', users_list, to=room)
 
 # 1. Define the function FIRST
 def update_room_list():
@@ -33,9 +48,12 @@ def handle_disconnect():
         username = user['username']
         room = user['room']
         if room in room_info and username in room_info[room]['users']:
-            room_info[room]['users'].remove(username)
+            del room_info[room]['users'][username]
+            broadcast_room_users(room)
             if len(room_info[room]['users']) == 0:
                 del room_info[room]
+                if room in room_history:
+                    del room_history[room]
                 update_room_list()
         del session_users[request.sid]
         send(f"{username} has disconnected.", to=room)
@@ -55,7 +73,7 @@ def on_create_room(data):
         'is_private': data.get('is_private', False),
         'password': data.get('password', ''),
         'limit': int(data.get('limit', 10)),
-        'users': set()
+        'users': {}
     }
     
     emit('create_success', {'room': room})
@@ -66,6 +84,7 @@ def on_join(data):
     username = data['username'].strip()
     room = data['room'].strip()
     password = data.get('password', '')
+    color = data.get('color', '#000000')
     
     if not username or not room:
         emit('join_error', {'error': 'Username and room cannot be empty!'})
@@ -90,10 +109,11 @@ def on_join(data):
         return
         
     join_room(room)
-    info['users'].add(username)
-    session_users[request.sid] = {'username': username, 'room': room, 'color': data.get('color', '#000000')}
+    info['users'][username] = color
+    session_users[request.sid] = {'username': username, 'room': room, 'color': color}
     
     update_room_list()
+    broadcast_room_users(room)
 
     history = room_history.get(room, [])
     emit('chat_history', history)
@@ -107,17 +127,24 @@ def on_leave(data):
     leave_room(room)
     
     if room in room_info and username in room_info[room]['users']:
-        room_info[room]['users'].remove(username)
+        del room_info[room]['users'][username]
+        broadcast_room_users(room)
         if len(room_info[room]['users']) == 0:
             del room_info[room]
             if room in room_history:
-                del room_history[room] # cleanup unused memory
+                del room_history[room]
             update_room_list()
             
     if request.sid in session_users:
         del session_users[request.sid]
         
     send(f"{username} has left the room.", to=room)
+
+@socketio.on('typing')
+def handle_typing(data):
+    user_info = session_users.get(request.sid)
+    if user_info:
+        emit('typing', {'user': user_info['username'], 'is_typing': data.get('is_typing', True)}, to=user_info['room'], include_self=False)
 
 @socketio.on('message')
 def handle_message(data):
@@ -126,11 +153,17 @@ def handle_message(data):
         return
         
     room = user_info['room']
+    
+    raw_msg = data['msg']
+    if data.get('type', 'text') == 'text':
+        raw_msg = filter_profanity(raw_msg)
+        
     msg_obj = {
-        'msg': data['msg'], 
+        'msg': raw_msg, 
         'user': user_info['username'], 
         'color': user_info.get('color', '#000000'),
-        'type': data.get('type', 'text')
+        'type': data.get('type', 'text'),
+        'timestamp': datetime.now().strftime("%I:%M %p")
     }
 
     if room not in room_history:
