@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Simple Chat Rooms</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        #left-panel {
+            flex: 1;
+            border-right: 1px solid #ddd;
+            padding-right: 20px;
+            max-width: 250px;
+        }
+
+        #right-panel {
+            flex: 3;
+        }
+
+        #messages {
+            border: 1px solid #ccc;
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fafafa;
+        }
+
+        .room-item {
+            cursor: pointer;
+            color: blue;
+            text-decoration: underline;
+            margin-bottom: 5px;
+        }
+
+        .room-item:hover {
+            color: darkblue;
+        }
+
+        /* Styling for the shared images */
+        .chat-image {
+            max-width: 250px;
+            max-height: 250px;
+            display: block;
+            border-radius: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .system-msg {
+            color: gray;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="left-panel">
+        <h3>Active Rooms</h3>
+        <div id="room-directory" style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
+            <ul id="room-list" style="list-style: none; padding: 0;"></ul>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <h2>Chat App</h2>
+
+        <div id="setup">
+            <input id="username" placeholder="Your Name">
+            <input id="room" placeholder="Room Name">
+            <button onclick="joinRoom()">Join Room</button>
+        </div>
+
+        <div id="chat" style="display:none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="room-header"></h3>
+                <button onclick="leaveRoom()"
+                    style="background: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Leave Room</button>
+            </div>
+
+            <div id="messages"></div>
+
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input id="my_message" placeholder="Type message..." style="flex: 2; padding: 5px;">
+                <input type="file" id="image_input" accept="image/*" style="flex: 1;">
+                <button onclick="sendMessage()" style="padding: 5px 15px;">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update BACKEND_URL to your Render backend URL once deployed. For local testing, use http://localhost:5000
+        const BACKEND_URL = "http://localhost:5000"; 
+        var socket = io(BACKEND_URL);
+        var username, room;
+
+        // JOIN ROOM
+        function joinRoom() {
+            username = document.getElementById('username').value;
+            room = document.getElementById('room').value;
+            if (username && room) {
+                socket.emit('join', { username: username, room: room });
+                document.getElementById('setup').style.display = 'none';
+                document.getElementById('chat').style.display = 'block';
+                document.getElementById('room-header').innerText = "Room: " + room;
+            } else {
+                alert("Please enter a name and a room!");
+            }
+        }
+
+        // LEAVE ROOM
+        function leaveRoom() {
+            socket.emit('leave', { username: username, room: room });
+            document.getElementById('chat').style.display = 'none';
+            document.getElementById('setup').style.display = 'block';
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // SEND MESSAGE (Handles Text and/or Images)
+        function sendMessage() {
+            var msgInput = document.getElementById('my_message');
+            var fileInput = document.getElementById('image_input');
+            var file = fileInput.files[0];
+            var msg = msgInput.value;
+
+            // 1. Handle Image Upload
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(evt) {
+                    socket.emit('message', {
+                        msg: evt.target.result,
+                        room: room,
+                        username: username,
+                        type: 'image'
+                    });
+                };
+                reader.readAsDataURL(file);
+                fileInput.value = ''; // Reset file input
+            }
+
+            // 2. Handle Text Message
+            if (msg.trim() !== "") {
+                socket.emit('message', { 
+                    msg: msg, 
+                    room: room, 
+                    username: username,
+                    type: 'text'
+                });
+                msgInput.value = ''; // Reset text input
+            }
+        }
+
+        // RECEIVE MESSAGE
+        socket.on('message', function (data) {
+            var p = document.createElement('p');
+            var messagesDiv = document.getElementById('messages');
+
+            // System messages (strings)
+            if (typeof data === 'string') {
+                p.innerHTML = `<span class="system-msg">${data}</span>`;
+            } 
+            // User messages (objects)
+            else {
+                if (data.type === 'image') {
+                    p.innerHTML = `<b>${data.user}:</b><br><img src="${data.msg}" class="chat-image">`;
+                } else {
+                    p.innerHTML = `<b>${data.user}:</b> ${data.msg}`;
+                }
+            }
+
+            messagesDiv.appendChild(p);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // UPDATE ROOM LIST
+        socket.on('room_list', function (rooms) {
+            console.log("Rooms received:", rooms);
+            var listElement = document.getElementById('room-list');
+            if (!listElement) return;
+
+            listElement.innerHTML = '';
+            if (rooms.length === 0) {
+                listElement.innerHTML = '<li>No active rooms</li>';
+            }
+
+            rooms.forEach(function (roomName) {
+                var li = document.createElement('li');
+                li.className = 'room-item';
+                li.innerText = roomName;
+                li.onclick = function () {
+                    document.getElementById('room').value = roomName;
+                };
+                listElement.appendChild(li);
+            });
+        });
+    </script>
+</body>
+</html>
