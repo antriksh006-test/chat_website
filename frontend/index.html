@@ -95,10 +95,27 @@
             <span id="status" style="color: red; font-size: 14px; font-weight: bold;">Connecting...</span>
         </div>
 
-        <div id="setup">
-            <input id="username" placeholder="Your Name">
-            <input id="room" placeholder="Room Name">
-            <button onclick="joinRoom()">Join Room</button>
+        <div id="setup" style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-width: 200px;">
+                <h3>Join a Room</h3>
+                <input id="join_username" placeholder="Your Name" style="margin-bottom: 5px; width: 100%;"><br>
+                <input id="join_room" placeholder="Room Name" style="margin-bottom: 5px; width: 100%;"><br>
+                <input id="join_password" type="password" placeholder="Password (if private)" style="margin-bottom: 15px; width: 100%;"><br>
+                <button onclick="joinRoom()">Join Room</button>
+            </div>
+
+            <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-width: 200px;">
+                <h3>Create a Room</h3>
+                <input id="create_room" placeholder="New Room Name" style="margin-bottom: 5px; width: 100%;"><br>
+                <label style="font-size: 14px;">User Limit (2-50): </label>
+                <input id="create_limit" type="number" min="2" max="50" value="10" style="margin-bottom: 5px; width: 60px;"><br>
+                
+                <label style="font-size: 14px; margin-top: 5px; display: block;">
+                    <input type="checkbox" id="create_is_private" onchange="document.getElementById('create_password').style.display = this.checked ? 'block' : 'none';"> Make Private
+                </label>
+                <input id="create_password" type="password" placeholder="Set Password" style="margin-bottom: 15px; width: 100%; display: none; margin-top: 5px;">
+                <button onclick="createRoom()" style="margin-top: 5px;">Create Room</button>
+            </div>
         </div>
 
         <div id="chat" style="display:none;">
@@ -138,19 +155,41 @@
         socket.on('join_error', function(data) {
             alert(data.error);
             document.getElementById('chat').style.display = 'none';
-            document.getElementById('setup').style.display = 'block';
+            document.getElementById('setup').style.display = 'flex';
             document.getElementById('messages').innerHTML = '';
         });
 
+        socket.on('create_error', function(data) {
+            alert(data.error);
+        });
+
+        socket.on('create_success', function(data) {
+            alert("Room '" + data.room + "' was created! You can now join it using the Join panel.");
+            document.getElementById('join_room').value = data.room;
+            if (document.getElementById('create_is_private').checked) {
+                document.getElementById('join_password').value = document.getElementById('create_password').value;
+            }
+            document.getElementById('create_room').value = '';
+            document.getElementById('create_password').value = '';
+        });
+
+        function createRoom() {
+            var r = document.getElementById('create_room').value;
+            var limit = document.getElementById('create_limit').value;
+            var isPrivate = document.getElementById('create_is_private').checked;
+            var password = document.getElementById('create_password').value;
+            if (!r) return alert("Room name is required.");
+            socket.emit('create_room', {room: r, limit: limit, is_private: isPrivate, password: password});
+        }
+
         // JOIN ROOM
         function joinRoom() {
-            username = document.getElementById('username').value;
-            room = document.getElementById('room').value;
+            username = document.getElementById('join_username').value;
+            room = document.getElementById('join_room').value;
+            var password = document.getElementById('join_password').value;
+
             if (username && room) {
-                socket.emit('join', { username: username, room: room });
-                document.getElementById('setup').style.display = 'none';
-                document.getElementById('chat').style.display = 'block';
-                document.getElementById('room-header').innerText = "Room: " + room;
+                socket.emit('join', { username: username, room: room, password: password });
             } else {
                 alert("Please enter a name and a room!");
             }
@@ -160,7 +199,7 @@
         function leaveRoom() {
             socket.emit('leave', { username: username, room: room });
             document.getElementById('chat').style.display = 'none';
-            document.getElementById('setup').style.display = 'block';
+            document.getElementById('setup').style.display = 'flex';
             document.getElementById('messages').innerHTML = '';
         }
 
@@ -224,6 +263,11 @@
 
         // RECEIVE CHAT HISTORY ON JOIN
         socket.on('chat_history', function (history) {
+            // Un-hide chat UI once history loads (proof of successful join)
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('chat').style.display = 'block';
+            document.getElementById('room-header').innerText = "Room: " + room;
+
             document.getElementById('messages').innerHTML = '';
             history.forEach(function (msgData) {
                 appendMessage(msgData);
@@ -246,7 +290,8 @@
                 li.className = 'room-item';
                 li.innerText = roomName;
                 li.onclick = function () {
-                    document.getElementById('room').value = roomName;
+                    document.getElementById('join_room').value = roomName;
+                    document.getElementById('join_password').value = '';
                 };
                 listElement.appendChild(li);
             });
