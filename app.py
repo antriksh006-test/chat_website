@@ -23,7 +23,7 @@ def filter_profanity(text):
 
 def broadcast_room_users(room):
     if room in room_info:
-        users_list = [{'name': u, 'color': room_info[room]['users'][u]} for u in room_info[room]['users']]
+        users_list = [{'name': u, 'color': room_info[room]['users'][u].get('color', '#000000')} for u in room_info[room]['users']]
         socketio.emit('room_users', users_list, to=room)
 
 # 1. Define the function FIRST
@@ -48,10 +48,12 @@ def handle_disconnect():
         username = user['username']
         room = user['room']
         if room in room_info and username in room_info[room]['users']:
-            del room_info[room]['users'][username]
-            broadcast_room_users(room)
-            if len(room_info[room]['users']) == 0:
-                del room_info[room]
+            # Only remove if the disconnecting SID matches the currently active SID for this user
+            if room_info[room]['users'][username].get('sid') == request.sid:
+                del room_info[room]['users'][username]
+                broadcast_room_users(room)
+                if len(room_info[room]['users']) == 0:
+                    del room_info[room]
                 if room in room_history:
                     del room_history[room]
                 update_room_list()
@@ -100,16 +102,12 @@ def on_join(data):
         emit('join_error', {'error': 'Incorrect room password!'})
         return
         
-    if len(info['users']) >= info['limit']:
+    if len(info['users']) >= info['limit'] and username not in info['users']:
         emit('join_error', {'error': f"Room '{room}' is full! (Limit: {info['limit']})"})
         return
         
-    if username in info['users']:
-        emit('join_error', {'error': f"Username '{username}' is already taken in this room!"})
-        return
-        
     join_room(room)
-    info['users'][username] = color
+    info['users'][username] = {'color': color, 'sid': request.sid}
     session_users[request.sid] = {'username': username, 'room': room, 'color': color}
     
     update_room_list()
@@ -127,10 +125,11 @@ def on_leave(data):
     leave_room(room)
     
     if room in room_info and username in room_info[room]['users']:
-        del room_info[room]['users'][username]
-        broadcast_room_users(room)
-        if len(room_info[room]['users']) == 0:
-            del room_info[room]
+        if room_info[room]['users'][username].get('sid') == request.sid:
+            del room_info[room]['users'][username]
+            broadcast_room_users(room)
+            if len(room_info[room]['users']) == 0:
+                del room_info[room]
             if room in room_history:
                 del room_history[room]
             update_room_list()
