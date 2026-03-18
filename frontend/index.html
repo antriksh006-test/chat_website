@@ -192,17 +192,14 @@
             }
         }
 
-        // RECEIVE MESSAGE
-        socket.on('message', function (data) {
+        // Helper function to render a message
+        function appendMessage(data) {
             var p = document.createElement('p');
             var messagesDiv = document.getElementById('messages');
 
-            // System messages (strings)
             if (typeof data === 'string') {
                 p.innerHTML = `<span class="system-msg">${data}</span>`;
-            } 
-            // User messages (objects)
-            else {
+            } else {
                 if (data.type === 'image') {
                     p.innerHTML = `<b>${data.user}:</b><br><img src="${data.msg}" class="chat-image">`;
                 } else {
@@ -212,6 +209,19 @@
 
             messagesDiv.appendChild(p);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // RECEIVE LIVE MESSAGE
+        socket.on('message', function (data) {
+            appendMessage(data);
+        });
+
+        // RECEIVE CHAT HISTORY ON JOIN
+        socket.on('chat_history', function (history) {
+            document.getElementById('messages').innerHTML = '';
+            history.forEach(function (msgData) {
+                appendMessage(msgData);
+            });
         });
 
         // UPDATE ROOM LIST

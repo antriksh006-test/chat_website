@@ -8,6 +8,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a-very-hard-to-guess-st
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 active_rooms = set()
+room_history = {} # Stores latest 50 messages per room
 
 # 1. Define the function FIRST
 def update_room_list():
@@ -30,6 +31,11 @@ def on_join(data):
     join_room(room)
     active_rooms.add(room)
     update_room_list() # Now this will work because it's defined above!
+
+    # Send past messages just to the user joining
+    history = room_history.get(room, [])
+    emit('chat_history', history)
+
     send(f"{username} has entered the room: {room}", to=room)
 
 @socketio.on('leave')
@@ -43,12 +49,20 @@ def on_leave(data):
 def handle_message(data):
     room = data.get('room')
     if room:
-        # data now contains 'msg', 'user', and potentially 'type'
-        emit('message', {
+        msg_obj = {
             'msg': data['msg'], 
             'user': data['username'], 
-            'type': data.get('type', 'text') # Default to text
-        }, to=room)
+            'type': data.get('type', 'text')
+        }
+
+        # Save message to history (cap at 50 messages)
+        if room not in room_history:
+            room_history[room] = []
+        room_history[room].append(msg_obj)
+        if len(room_history[room]) > 50:
+            room_history[room].pop(0)
+
+        emit('message', msg_obj, to=room)
 
 if __name__ == '__main__':
     # Use 0.0.0.0 so the server is accessible externally
