@@ -1,170 +1,557 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Chat Rooms</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
+        :root {
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --border-color: #e1e4e8;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --msg-bg-other: #e9ecef;
+            --msg-bg-own: #d1e7dd;
+            --danger: #dc3545;
+            --danger-hover: #c82333;
+            --radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
         body {
-            font-family: sans-serif;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
             display: flex;
-            gap: 20px;
-            padding: 20px;
+            justify-content: center;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            height: 100vh;
+            background: var(--panel-bg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* Left Panel */
         #left-panel {
+            width: 250px;
+            background: #f8f9fa;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #left-panel h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-bottom: 15px;
+        }
+
+        #room-directory {
             flex: 1;
-            border-right: 1px solid #ddd;
-            padding-right: 20px;
-            max-width: 250px;
+            overflow-y: auto;
         }
 
-        #right-panel {
-            flex: 3;
-        }
-
-        #messages {
-            border: 1px solid #ccc;
-            height: 300px;
-            overflow-y: scroll;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #fafafa;
+        #room-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
 
         .room-item {
             cursor: pointer;
-            color: blue;
-            text-decoration: underline;
-            margin-bottom: 5px;
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+            font-weight: 500;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
         }
 
         .room-item:hover {
-            color: darkblue;
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
         }
 
-        /* Styling for the shared images */
-        .chat-image {
-            max-width: 250px;
-            max-height: 250px;
-            display: block;
-            border-radius: 8px;
-            margin-top: 5px;
-            border: 1px solid #ddd;
+        /* Right Panel */
+        #right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            background: var(--panel-bg);
+            overflow: hidden;
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h2, h3, h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+
+        /* Forms */
+        input[type="text"], input[type="password"], input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        button.danger:hover {
+            background: var(--danger-hover);
+        }
+
+        /* Setup Section */
+        #setup {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            overflow-y: auto;
+        }
+
+        .setup-card {
+            flex: 1;
+            min-width: 250px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .setup-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .form-row label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Chat Section */
+        #chat {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .chat-container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-main {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Message Bubbles */
+        .msg-container {
+            display: flex;
+            flex-direction: column;
+            max-width: 75%;
+        }
+
+        .msg-own {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .msg-other {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .msg-bubble {
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--msg-bg-other);
+            color: var(--text-main);
+            position: relative;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .msg-own .msg-bubble {
+            background: var(--msg-bg-own);
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-other .msg-bubble {
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg-header {
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .msg-name {
+            font-weight: 600;
+        }
+
+        .msg-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
         }
 
         .system-msg {
-            color: gray;
+            align-self: center;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
             font-style: italic;
+            background: rgba(0,0,0,0.05);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin: 5px 0;
         }
-        @media (max-width: 600px) {
-            div[style*="gap: 20px"] {
-                flex-direction: column;
-            }
+
+        .chat-image {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 15px;
+            background: #ffffff;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #typing_indicator {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.8rem;
+            height: 16px;
+            margin-bottom: 8px;
+            padding-left: 5px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-row input[type="text"] {
+            margin-bottom: 0;
+            flex: 1;
+        }
+
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-upload input[type="file"] {
+            position: absolute;
+            font-size: 100px;
+            opacity: 0;
+            right: 0;
+            top: 0;
+            cursor: pointer;
+        }
+        .file-upload-btn {
+            background: #e9ecef;
+            color: var(--text-main);
+            padding: 10px 15px;
+            border-radius: var(--radius);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-upload-btn:hover {
+            background: #dde0e3;
+        }
+
+        .input-row button {
+            width: auto;
+            padding: 10px 20px;
+        }
+
+        /* Roster */
+        .roster-sidebar {
+            flex: 1;
+            min-width: 150px;
+            max-width: 200px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: #ffffff;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .roster-sidebar h4 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #roster {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+        }
+
+        #roster li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
             body {
+                height: auto;
+            }
+            .container {
                 flex-direction: column;
+                height: 100vh;
             }
             #left-panel {
-                max-width: none;
+                width: 100%;
                 border-right: none;
-                border-bottom: 1px solid #ddd;
-                padding-right: 0;
-                padding-bottom: 20px;
-                margin-bottom: 20px;
+                border-bottom: 1px solid var(--border-color);
+                max-height: 200px;
+                padding: 15px;
             }
-            #messages {
-                height: 250px;
+            #right-panel {
+                padding: 15px;
             }
-            div[style*="gap: 10px"] {
+            .chat-container {
                 flex-direction: column;
-                align-items: stretch;
+            }
+            .roster-sidebar {
+                max-width: none;
+                max-height: 150px;
+                order: -1;
+            }
+            #setup {
+                flex-direction: column;
+                display: block; /* allow normal flow to stack */
+            }
+            .input-row {
+                flex-wrap: wrap;
+            }
+            .file-upload-btn {
+                padding: 10px;
             }
         }
     </style>
 </head>
 
 <body>
-
-    <div id="left-panel">
-        <h3>Active Rooms</h3>
-        <div id="room-directory" style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
-            <ul id="room-list" style="list-style: none; padding: 0;"></ul>
-        </div>
-    </div>
-
-    <div id="right-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2>Chat App</h2>
-            <span id="status" style="color: red; font-size: 14px; font-weight: bold;">Connecting...</span>
-        </div>
-
-        <div id="setup" style="display: flex; gap: 20px; flex-wrap: wrap;">
-            <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-width: 200px;">
-                <h3>Join a Room</h3>
-                <input id="join_username" placeholder="Your Name" style="margin-bottom: 5px; width: 100%;"><br>
-                <div style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
-                    <label style="font-size: 14px;">Name Color:</label>
-                    <input type="color" id="join_color" value="#000000" style="cursor: pointer;">
-                </div>
-                <input id="join_room" placeholder="Room Name" style="margin-bottom: 5px; width: 100%;"><br>
-                <input id="join_password" type="password" placeholder="Password (if private)" style="margin-bottom: 15px; width: 100%;"><br>
-                <button onclick="joinRoom()">Join Room</button>
-            </div>
-
-            <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-width: 200px;">
-                <h3>Create a Room</h3>
-                <input id="create_room" placeholder="New Room Name" style="margin-bottom: 5px; width: 100%;"><br>
-                <label style="font-size: 14px;">User Limit (2-50): </label>
-                <input id="create_limit" type="number" min="2" max="50" value="10" style="margin-bottom: 5px; width: 60px;"><br>
-                
-                <label style="font-size: 14px; margin-top: 5px; display: block;">
-                    <input type="checkbox" id="create_is_private" onchange="document.getElementById('create_password').style.display = this.checked ? 'block' : 'none';"> Make Private
-                </label>
-                <input id="create_password" type="password" placeholder="Set Password" style="margin-bottom: 15px; width: 100%; display: none; margin-top: 5px;">
-                <button onclick="createRoom()" style="margin-top: 5px;">Create Room</button>
+    <div class="container">
+        <!-- Left Panel: Directory -->
+        <div id="left-panel">
+            <h3>Active Rooms</h3>
+            <div id="room-directory">
+                <ul id="room-list"></ul>
             </div>
         </div>
 
-        <div id="chat" style="display:none; width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-bottom: 10px;">
-                <h3 id="room-header" style="margin: 0;"></h3>
-                <button onclick="leaveRoom()"
-                    style="background: #dc3545; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold;">Leave Room</button>
+        <!-- Right Panel: Main Content -->
+        <div id="right-panel">
+            <div class="header-bar">
+                <h2>Chat App</h2>
+                <span id="status" style="color: var(--text-muted); font-size: 14px; font-weight: 600;">Connecting...</span>
             </div>
 
-            <div style="display: flex; gap: 20px;">
-                <div style="flex: 3; display: flex; flex-direction: column;">
-                    <div id="messages"></div>
-                    <div id="typing_indicator" style="color: gray; font-style: italic; font-size: 12px; height: 16px; margin-bottom: 5px;"></div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input id="my_message" placeholder="Type message..." style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <input type="file" id="image_input" accept="image/*" style="flex: 1;">
-                        <button onclick="sendMessage()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+            <!-- Setup UI -->
+            <div id="setup">
+                <div class="setup-card">
+                    <h3>Join a Room</h3>
+                    <input id="join_username" type="text" placeholder="Your Name">
+                    <div class="form-row">
+                        <label>Avatar Color:</label>
+                        <input type="color" id="join_color" value="#007bff" style="cursor: pointer; width: 40px; height: 30px; padding: 0; border: none;">
                     </div>
+                    <input id="join_room" type="text" placeholder="Room Name">
+                    <input id="join_password" type="password" placeholder="Password (if private)">
+                    <button onclick="joinRoom()">Join Room</button>
                 </div>
-                
-                <div style="flex: 1; border: 1px solid #ccc; border-radius: 5px; background: #fafafa; padding: 10px; min-width: 150px; max-height: 350px; overflow-y: auto;">
-                    <h4 style="margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; text-align: center;">Users Online</h4>
-                    <ul id="roster" style="list-style: none; padding: 0; margin: 0;"></ul>
+
+                <div class="setup-card">
+                    <h3>Create a Room</h3>
+                    <input id="create_room" type="text" placeholder="New Room Name">
+                    <div class="form-row">
+                        <label>User Limit (2-50): </label>
+                        <input id="create_limit" type="number" min="2" max="50" value="10" style="width: 80px; margin-bottom: 0;">
+                    </div>
+                    
+                    <div class="form-row" style="justify-content: flex-start; gap: 10px;">
+                        <input type="checkbox" id="create_is_private" onchange="document.getElementById('create_password').style.display = this.checked ? 'block' : 'none';" style="width: auto;">
+                        <label>Make Private</label>
+                    </div>
+                    <input id="create_password" type="password" placeholder="Set Password" style="display: none; margin-top: 10px;">
+                    <button onclick="createRoom()" style="margin-top: 15px;">Create Room</button>
+                </div>
+            </div>
+
+            <!-- Chat UI -->
+            <div id="chat">
+                <div class="header-bar" style="border-bottom: none; margin-bottom: 10px; padding-bottom: 0;">
+                    <h3 id="room-header"></h3>
+                    <button onclick="leaveRoom()" class="danger" style="width: auto; padding: 6px 12px; font-size: 0.9rem;">Leave Room</button>
+                </div>
+
+                <div class="chat-container">
+                    <div class="chat-main">
+                        <div id="messages"></div>
+                        <div class="input-area">
+                            <div id="typing_indicator"></div>
+                            <div class="input-row">
+                                <input id="my_message" type="text" placeholder="Type a message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMessage()">
+                                <div class="file-upload">
+                                    <div class="file-upload-btn">📷</div>
+                                    <input type="file" id="image_input" accept="image/*">
+                                </div>
+                                <button onclick="sendMessage()">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="roster-sidebar">
+                        <h4>Users Online</h4>
+                        <ul id="roster"></ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Update BACKEND_URL to your Render backend URL once deployed. For local testing, use http://localhost:5000
         const BACKEND_URL = "https://chat-website-kd6i.onrender.com"; 
         var socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
         var username, room;
 
         socket.on('connect', function() {
-            document.getElementById('status').innerText = "Connected";
-            document.getElementById('status').style.color = "green";
+            var s = document.getElementById('status');
+            s.innerText = "Connected";
+            s.style.color = "#28a745"; // Success green
         });
 
         socket.on('disconnect', function() {
-            document.getElementById('status').innerText = "Disconnected";
-            document.getElementById('status').style.color = "red";
+            var s = document.getElementById('status');
+            s.innerText = "Disconnected";
+            s.style.color = "var(--danger)";
             leaveRoom();
         });
 
@@ -180,7 +567,7 @@
         });
 
         socket.on('create_success', function(data) {
-            alert("Room '" + data.room + "' was created! You can now join it using the Join panel.");
+            alert("Room '" + data.room + "' created! You can now join it.");
             document.getElementById('join_room').value = data.room;
             if (document.getElementById('create_is_private').checked) {
                 document.getElementById('join_password').value = document.getElementById('create_password').value;
@@ -225,16 +612,14 @@
             roster.innerHTML = '';
             users.forEach(function(u) {
                 var li = document.createElement('li');
-                li.innerHTML = `<span style="color: ${u.color}; font-weight: bold; font-size: 18px; vertical-align: -2px;">•</span> <span style="font-size: 14px;">${u.name}</span>`;
-                li.style.marginBottom = "5px";
+                li.innerHTML = `<span class="dot" style="background-color: ${u.color}"></span> <span>${u.name}</span>`;
                 roster.appendChild(li);
             });
         });
 
-        // JOIN ROOM
         function joinRoom() {
-            username = document.getElementById('join_username').value;
-            room = document.getElementById('join_room').value;
+            username = document.getElementById('join_username').value.trim();
+            room = document.getElementById('join_room').value.trim();
             var password = document.getElementById('join_password').value;
             userColor = document.getElementById('join_color').value;
 
@@ -245,7 +630,6 @@
             }
         }
 
-        // LEAVE ROOM
         function leaveRoom() {
             socket.emit('leave', { username: username, room: room });
             document.getElementById('chat').style.display = 'none';
@@ -253,14 +637,13 @@
             document.getElementById('messages').innerHTML = '';
         }
 
-        // SEND MESSAGE (Handles Text and/or Images)
         function sendMessage() {
             var msgInput = document.getElementById('my_message');
             var fileInput = document.getElementById('image_input');
             var file = fileInput.files[0];
             var msg = msgInput.value;
 
-            // 1. Handle Image Upload
+            // Handle Image
             if (file) {
                 var reader = new FileReader();
                 reader.onload = function(evt) {
@@ -272,10 +655,10 @@
                     });
                 };
                 reader.readAsDataURL(file);
-                fileInput.value = ''; // Reset file input
+                fileInput.value = ''; 
             }
 
-            // 2. Handle Text Message
+            // Handle Text
             if (msg.trim() !== "") {
                 socket.emit('message', { 
                     msg: msg, 
@@ -283,36 +666,48 @@
                     username: username,
                     type: 'text'
                 });
-                msgInput.value = ''; // Reset text input
+                msgInput.value = '';
             }
         }
 
-        // Helper function to render a message
         function appendMessage(data) {
-            var p = document.createElement('p');
             var messagesDiv = document.getElementById('messages');
-            var c = data.color || '#000000';
-            var ts = data.timestamp ? `<span style="font-size: 10px; color: #999; margin-left: 8px;">${data.timestamp}</span>` : "";
+            var isOwn = data.user === username;
+            var ts = data.timestamp ? data.timestamp.split(' ')[1] : ""; 
 
             if (typeof data === 'string') {
-                p.innerHTML = `<span class="system-msg">${data}</span>`;
+                var d = document.createElement('div');
+                d.className = 'system-msg';
+                d.innerText = data;
+                messagesDiv.appendChild(d);
             } else {
+                var d = document.createElement('div');
+                d.className = `msg-container ${isOwn ? 'msg-own' : 'msg-other'}`;
+                
+                var c = data.color || '#000000';
+                var headerHTML = `<div class="msg-header">
+                                    <span class="msg-name" style="color: ${c}">${data.user}</span>
+                                    ${ts ? `<span class="msg-time">${ts}</span>` : ''}
+                                  </div>`;
+                
+                var bubbleHTML = '';
                 if (data.type === 'image') {
-                    p.innerHTML = `<b style="color: ${c}">${data.user}</b>${ts}<b>:</b><br><img src="${data.msg}" class="chat-image">`;
+                    bubbleHTML = `<div class="msg-bubble"><img src="${data.msg}" class="chat-image"></div>`;
                 } else {
                     var urlRegex = /(https?:\/\/[^\s]+)/g;
-                    var formattedText = data.msg.replace(urlRegex, function(url) {
-                        return '<a href="' + url + '" target="_blank" style="color: #007bff; text-decoration: underline;">' + url + '</a>';
+                    var safeMsg = data.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    var formattedText = safeMsg.replace(urlRegex, function(url) {
+                        return '<a href="' + url + '" target="_blank" style="color: inherit; text-decoration: underline; font-weight: 500;">' + url + '</a>';
                     });
-                    p.innerHTML = `<b style="color: ${c}">${data.user}</b>${ts}<b>:</b> ${formattedText}`;
+                    bubbleHTML = `<div class="msg-bubble">${formattedText}</div>`;
                 }
+                
+                d.innerHTML = headerHTML + bubbleHTML;
+                messagesDiv.appendChild(d);
             }
-
-            messagesDiv.appendChild(p);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // RECEIVE LIVE MESSAGE
         socket.on('message', function (data) {
             appendMessage(data);
             if (data.user && data.user !== username) {
@@ -320,12 +715,10 @@
             }
         });
 
-        // RECEIVE CHAT HISTORY ON JOIN
         socket.on('chat_history', function (history) {
-            // Un-hide chat UI once history loads (proof of successful join)
             document.getElementById('setup').style.display = 'none';
-            document.getElementById('chat').style.display = 'block';
-            document.getElementById('room-header').innerText = "Room: " + room;
+            document.getElementById('chat').style.display = 'flex';
+            document.getElementById('room-header').innerText = room;
 
             document.getElementById('messages').innerHTML = '';
             history.forEach(function (msgData) {
@@ -333,21 +726,19 @@
             });
         });
 
-        // UPDATE ROOM LIST
         socket.on('room_list', function (rooms) {
-            console.log("Rooms received:", rooms);
             var listElement = document.getElementById('room-list');
             if (!listElement) return;
 
             listElement.innerHTML = '';
             if (rooms.length === 0) {
-                listElement.innerHTML = '<li>No active rooms</li>';
+                listElement.innerHTML = '<li style="padding: 10px; color: var(--text-muted); font-size: 0.9rem;">No active rooms</li>';
             }
 
             rooms.forEach(function (roomObj) {
                 var li = document.createElement('li');
                 li.className = 'room-item';
-                li.innerText = roomObj.private ? "🔒 " + roomObj.name : roomObj.name;
+                li.innerHTML = (roomObj.private ? "🔒 " : "💬 ") + roomObj.name;
                 li.onclick = function () {
                     document.getElementById('join_room').value = roomObj.name;
                     document.getElementById('join_password').value = '';
