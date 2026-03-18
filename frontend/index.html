@@ -57,6 +57,26 @@
             color: gray;
             font-style: italic;
         }
+        @media (max-width: 600px) {
+            body {
+                flex-direction: column;
+            }
+            #left-panel {
+                max-width: none;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+                padding-right: 0;
+                padding-bottom: 20px;
+                margin-bottom: 20px;
+            }
+            #messages {
+                height: 250px;
+            }
+            div[style*="gap: 10px"] {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 
@@ -70,7 +90,10 @@
     </div>
 
     <div id="right-panel">
-        <h2>Chat App</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>Chat App</h2>
+            <span id="status" style="color: red; font-size: 14px; font-weight: bold;">Connecting...</span>
+        </div>
 
         <div id="setup">
             <input id="username" placeholder="Your Name">
@@ -98,7 +121,19 @@
     <script>
         // Update BACKEND_URL to your Render backend URL once deployed. For local testing, use http://localhost:5000
         const BACKEND_URL = "https://chat-website-kd6i.onrender.com"; 
-        var socket = io(BACKEND_URL);
+        var socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
+        var username, room;
+
+        socket.on('connect', function() {
+            document.getElementById('status').innerText = "Connected";
+            document.getElementById('status').style.color = "green";
+        });
+
+        socket.on('disconnect', function() {
+            document.getElementById('status').innerText = "Disconnected";
+            document.getElementById('status').style.color = "red";
+            leaveRoom();
+        });
         var username, room;
 
         // JOIN ROOM
