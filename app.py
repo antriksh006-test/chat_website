@@ -8,7 +8,7 @@ import re
 app = Flask(__name__)
 CORS(app)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a-very-hard-to-guess-string')
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=10485760) # 10MB max
 
 room_info = {} # Maps room_name -> {'is_private': bool, 'password': str, 'limit': int, 'users': {username: color}}
 room_history = {} # Stores latest 50 messages per room
