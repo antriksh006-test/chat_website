@@ -99,6 +99,10 @@
             <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-width: 200px;">
                 <h3>Join a Room</h3>
                 <input id="join_username" placeholder="Your Name" style="margin-bottom: 5px; width: 100%;"><br>
+                <div style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                    <label style="font-size: 14px;">Name Color:</label>
+                    <input type="color" id="join_color" value="#000000" style="cursor: pointer;">
+                </div>
                 <input id="join_room" placeholder="Room Name" style="margin-bottom: 5px; width: 100%;"><br>
                 <input id="join_password" type="password" placeholder="Password (if private)" style="margin-bottom: 15px; width: 100%;"><br>
                 <button onclick="joinRoom()">Join Room</button>
@@ -182,14 +186,17 @@
             socket.emit('create_room', {room: r, limit: limit, is_private: isPrivate, password: password});
         }
 
+        var userColor;
+
         // JOIN ROOM
         function joinRoom() {
             username = document.getElementById('join_username').value;
             room = document.getElementById('join_room').value;
             var password = document.getElementById('join_password').value;
+            userColor = document.getElementById('join_color').value;
 
             if (username && room) {
-                socket.emit('join', { username: username, room: room, password: password });
+                socket.emit('join', { username: username, room: room, password: password, color: userColor });
             } else {
                 alert("Please enter a name and a room!");
             }
@@ -241,14 +248,15 @@
         function appendMessage(data) {
             var p = document.createElement('p');
             var messagesDiv = document.getElementById('messages');
+            var c = data.color || '#000000';
 
             if (typeof data === 'string') {
                 p.innerHTML = `<span class="system-msg">${data}</span>`;
             } else {
                 if (data.type === 'image') {
-                    p.innerHTML = `<b>${data.user}:</b><br><img src="${data.msg}" class="chat-image">`;
+                    p.innerHTML = `<b style="color: ${c}">${data.user}:</b><br><img src="${data.msg}" class="chat-image">`;
                 } else {
-                    p.innerHTML = `<b>${data.user}:</b> ${data.msg}`;
+                    p.innerHTML = `<b style="color: ${c}">${data.user}:</b> ${data.msg}`;
                 }
             }
 
@@ -285,13 +293,14 @@
                 listElement.innerHTML = '<li>No active rooms</li>';
             }
 
-            rooms.forEach(function (roomName) {
+            rooms.forEach(function (roomObj) {
                 var li = document.createElement('li');
                 li.className = 'room-item';
-                li.innerText = roomName;
+                li.innerText = roomObj.private ? "🔒 " + roomObj.name : roomObj.name;
                 li.onclick = function () {
-                    document.getElementById('join_room').value = roomName;
+                    document.getElementById('join_room').value = roomObj.name;
                     document.getElementById('join_password').value = '';
+                    if (roomObj.private) document.getElementById('join_password').focus();
                 };
                 listElement.appendChild(li);
             });

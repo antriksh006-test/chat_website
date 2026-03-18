@@ -13,9 +13,8 @@ session_users = {} # Maps connections: {'sid': {'username': 'u', 'room': 'r'}}
 
 # 1. Define the function FIRST
 def update_room_list():
-    # Only broadcast public rooms
-    public_rooms = [r for r in room_info.keys() if not room_info[r].get('is_private', False)]
-    emit('room_list', public_rooms, broadcast=True)
+    rooms_data = [{'name': r, 'private': room_info[r].get('is_private', False)} for r in room_info.keys()]
+    emit('room_list', rooms_data, broadcast=True)
 
 @app.route('/')
 def index():
@@ -92,7 +91,7 @@ def on_join(data):
         
     join_room(room)
     info['users'].add(username)
-    session_users[request.sid] = {'username': username, 'room': room}
+    session_users[request.sid] = {'username': username, 'room': room, 'color': data.get('color', '#000000')}
     
     update_room_list()
 
@@ -122,22 +121,25 @@ def on_leave(data):
 
 @socketio.on('message')
 def handle_message(data):
-    room = data.get('room')
-    if room:
-        msg_obj = {
-            'msg': data['msg'], 
-            'user': data['username'], 
-            'type': data.get('type', 'text')
-        }
+    user_info = session_users.get(request.sid)
+    if not user_info:
+        return
+        
+    room = user_info['room']
+    msg_obj = {
+        'msg': data['msg'], 
+        'user': user_info['username'], 
+        'color': user_info.get('color', '#000000'),
+        'type': data.get('type', 'text')
+    }
 
-        # Save message to history (cap at 50 messages)
-        if room not in room_history:
-            room_history[room] = []
-        room_history[room].append(msg_obj)
-        if len(room_history[room]) > 50:
-            room_history[room].pop(0)
+    if room not in room_history:
+        room_history[room] = []
+    room_history[room].append(msg_obj)
+    if len(room_history[room]) > 50:
+        room_history[room].pop(0)
 
-        emit('message', msg_obj, to=room)
+    emit('message', msg_obj, to=room)
 
 if __name__ == '__main__':
     # Use 0.0.0.0 so the server is accessible externally
