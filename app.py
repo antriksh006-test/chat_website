@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 import os 
@@ -9,6 +9,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 active_rooms = set()
 room_history = {} # Stores latest 50 messages per room
+room_users = {} # Tracks active usernames: {'Room1': set(['Alice'])}
+session_users = {} # Maps connections: {'sid': {'username': 'u', 'room': 'r'}}
 
 # 1. Define the function FIRST
 def update_room_list():
@@ -24,13 +26,39 @@ def handle_connect(auth):
     print("Client connected")
     update_room_list() 
 
+@socketio.on('disconnect')
+def handle_disconnect():
+    user = session_users.get(request.sid)
+    if user:
+        username = user['username']
+        room = user['room']
+        if room in room_users and username in room_users[room]:
+            room_users[room].remove(username)
+            if len(room_users[room]) == 0 and room in active_rooms:
+                active_rooms.remove(room)
+                update_room_list()
+        del session_users[request.sid]
+        send(f"{username} has disconnected.", to=room)
+
 @socketio.on('join')
 def on_join(data):
     username = data['username']
     room = data['room']
+    
+    # Check for duplicate usernames
+    if room in room_users and username in room_users[room]:
+        emit('join_error', {'error': f"The username '{username}' is already taken in room '{room}'!"})
+        return
+        
     join_room(room)
     active_rooms.add(room)
-    update_room_list() # Now this will work because it's defined above!
+    
+    if room not in room_users:
+        room_users[room] = set()
+    room_users[room].add(username)
+    session_users[request.sid] = {'username': username, 'room': room}
+    
+    update_room_list()
 
     # Send past messages just to the user joining
     history = room_history.get(room, [])
@@ -43,6 +71,16 @@ def on_leave(data):
     username = data['username']
     room = data['room']
     leave_room(room)
+    
+    if room in room_users and username in room_users[room]:
+        room_users[room].remove(username)
+        if len(room_users[room]) == 0 and room in active_rooms:
+            active_rooms.remove(room)
+            update_room_list()
+            
+    if request.sid in session_users:
+        del session_users[request.sid]
+        
     send(f"{username} has left the room.", to=room)
 
 @socketio.on('message')

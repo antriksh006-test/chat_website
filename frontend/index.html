@@ -134,7 +134,13 @@
             document.getElementById('status').style.color = "red";
             leaveRoom();
         });
-        var username, room;
+
+        socket.on('join_error', function(data) {
+            alert(data.error);
+            document.getElementById('chat').style.display = 'none';
+            document.getElementById('setup').style.display = 'block';
+            document.getElementById('messages').innerHTML = '';
+        });
 
         // JOIN ROOM
         function joinRoom() {
