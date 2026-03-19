@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Chat Rooms</title>
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="icon" type="image/x-icon" href="icon/icon.jpg">
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <style>
         :root {
@@ -132,13 +135,17 @@
             flex-shrink: 0;
         }
 
-        h2, h3, h4 {
+        h2,
+        h3,
+        h4 {
             margin: 0;
             font-weight: 600;
         }
 
         /* Forms */
-        input[type="text"], input[type="password"], input[type="number"] {
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
             width: 100%;
             padding: 10px 12px;
             background: var(--panel-bg);
@@ -239,7 +246,7 @@
             flex-direction: column;
             width: 100%;
             height: 100%;
-            min-height: 0; 
+            min-height: 0;
             flex: 1;
         }
 
@@ -332,14 +339,14 @@
             font-size: 0.85rem;
             color: var(--text-muted);
             font-style: italic;
-            background: rgba(0,0,0,0.05);
+            background: rgba(0, 0, 0, 0.05);
             padding: 4px 12px;
             border-radius: 20px;
             margin: 5px 0;
         }
 
         body.dark-mode .system-msg {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .chat-image {
@@ -356,7 +363,8 @@
             border-top: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            flex-shrink: 0; /* Prevents squishing */
+            flex-shrink: 0;
+            /* Prevents squishing */
         }
 
         #typing_indicator {
@@ -385,6 +393,7 @@
             overflow: hidden;
             display: inline-block;
         }
+
         .file-upload input[type="file"] {
             position: absolute;
             font-size: 100px;
@@ -393,7 +402,9 @@
             top: 0;
             cursor: pointer;
         }
-        .file-upload-btn, .emoji-btn {
+
+        .file-upload-btn,
+        .emoji-btn {
             background: var(--msg-bg-other);
             color: var(--text-main);
             padding: 10px 15px;
@@ -406,9 +417,12 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .file-upload-btn:hover, .emoji-btn:hover {
+
+        .file-upload-btn:hover,
+        .emoji-btn:hover {
             background: var(--bg-color);
         }
+
         .file-upload-btn.has-file {
             background: #28a745 !important;
             color: white !important;
@@ -472,6 +486,7 @@
             .container {
                 flex-direction: column;
             }
+
             #left-panel {
                 width: 100%;
                 border-right: none;
@@ -480,28 +495,38 @@
                 padding: 15px;
                 flex-shrink: 0;
             }
+
             body.in-chat #left-panel {
-                display: none; /* Hide active rooms on mobile when inside a chat room */
+                display: none;
+                /* Hide active rooms on mobile when inside a chat room */
             }
+
             #right-panel {
                 padding: 10px;
                 flex: 1;
                 min-height: 0;
             }
+
             .chat-container {
                 flex-direction: column;
             }
+
             .roster-sidebar {
-                display: none; /* Hide users online on mobile to maximize chat space */
+                display: none;
+                /* Hide users online on mobile to maximize chat space */
             }
+
             #setup {
                 flex-direction: column;
                 display: block;
             }
+
             .input-row {
                 flex-wrap: wrap;
             }
-            .emoji-btn, .file-upload-btn {
+
+            .emoji-btn,
+            .file-upload-btn {
                 padding: 10px;
             }
         }
@@ -523,7 +548,8 @@
             <div class="header-bar">
                 <h2>Chat App</h2>
                 <div style="display: flex; align-items: center; gap: 15px;">
-                    <span id="status" style="color: var(--text-muted); font-size: 14px; font-weight: 600;">Connecting...</span>
+                    <span id="status"
+                        style="color: var(--text-muted); font-size: 14px; font-weight: 600;">Connecting...</span>
                     <button id="theme-toggle" class="icon-btn" title="Toggle Dark Mode">🌙</button>
                 </div>
             </div>
@@ -535,7 +561,8 @@
                     <input id="join_username" type="text" placeholder="Your Name">
                     <div class="form-row">
                         <label>Avatar Color:</label>
-                        <input type="color" id="join_color" value="#007bff" style="cursor: pointer; width: 40px; height: 30px; padding: 0; border: none; background: transparent;">
+                        <input type="color" id="join_color" value="#007bff"
+                            style="cursor: pointer; width: 40px; height: 30px; padding: 0; border: none; background: transparent;">
                     </div>
                     <input id="join_room" type="text" placeholder="Room Name">
                     <input id="join_password" type="password" placeholder="Password (if private)">
@@ -547,14 +574,18 @@
                     <input id="create_room" type="text" placeholder="New Room Name">
                     <div class="form-row">
                         <label>User Limit (2-50): </label>
-                        <input id="create_limit" type="number" min="2" max="50" value="10" style="width: 80px; margin-bottom: 0;">
+                        <input id="create_limit" type="number" min="2" max="50" value="10"
+                            style="width: 80px; margin-bottom: 0;">
                     </div>
-                    
+
                     <div class="form-row" style="justify-content: flex-start; gap: 10px;">
-                        <input type="checkbox" id="create_is_private" onchange="document.getElementById('create_password').style.display = this.checked ? 'block' : 'none';" style="width: auto;">
+                        <input type="checkbox" id="create_is_private"
+                            onchange="document.getElementById('create_password').style.display = this.checked ? 'block' : 'none';"
+                            style="width: auto;">
                         <label>Make Private</label>
                     </div>
-                    <input id="create_password" type="password" placeholder="Set Password" style="display: none; margin-top: 10px;">
+                    <input id="create_password" type="password" placeholder="Set Password"
+                        style="display: none; margin-top: 10px;">
                     <button onclick="createRoom()" style="margin-top: 15px;">Create Room</button>
                 </div>
             </div>
@@ -563,7 +594,8 @@
             <div id="chat">
                 <div class="header-bar" style="border-bottom: none; margin-bottom: 10px; padding-bottom: 0;">
                     <h3 id="room-header"></h3>
-                    <button onclick="leaveRoom()" class="danger" style="width: auto; padding: 6px 12px; font-size: 0.9rem;">Leave Room</button>
+                    <button onclick="leaveRoom()" class="danger"
+                        style="width: auto; padding: 6px 12px; font-size: 0.9rem;">Leave Room</button>
                 </div>
 
                 <div class="chat-container">
@@ -572,24 +604,28 @@
                         <div class="input-area">
                             <div id="typing_indicator"></div>
                             <div class="input-row">
-                                <input id="my_message" type="text" placeholder="Type a message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMessage()">
-                                
+                                <input id="my_message" type="text" placeholder="Type a message..." autocomplete="off"
+                                    onkeypress="if(event.key === 'Enter') sendMessage()">
+
                                 <div style="position: relative;">
                                     <div class="emoji-btn" id="emoji-toggle">😀</div>
-                                    <div id="emoji-picker-container" style="display: none; position: absolute; bottom: 100%; right: 0; margin-bottom: 10px; z-index: 1000; box-shadow: var(--shadow); border-radius: var(--radius);">
-                                        <emoji-picker class="dark" style="--background: var(--panel-bg); --border-color: var(--border-color);"></emoji-picker>
+                                    <div id="emoji-picker-container"
+                                        style="display: none; position: absolute; bottom: 100%; right: 0; margin-bottom: 10px; z-index: 1000; box-shadow: var(--shadow); border-radius: var(--radius);">
+                                        <emoji-picker class="dark"
+                                            style="--background: var(--panel-bg); --border-color: var(--border-color);"></emoji-picker>
                                     </div>
                                 </div>
 
                                 <div class="file-upload">
                                     <div class="file-upload-btn" id="upload-btn">📷</div>
-                                    <input type="file" id="image_input" accept="image/*" onchange="if(this.files.length > 0) { document.getElementById('upload-btn').classList.add('has-file'); document.getElementById('upload-btn').innerText = '🖼️ ✓'; } else { document.getElementById('upload-btn').classList.remove('has-file'); document.getElementById('upload-btn').innerText = '📷'; }">
+                                    <input type="file" id="image_input" accept="image/*"
+                                        onchange="if(this.files.length > 0) { document.getElementById('upload-btn').classList.add('has-file'); document.getElementById('upload-btn').innerText = '🖼️ ✓'; } else { document.getElementById('upload-btn').classList.remove('has-file'); document.getElementById('upload-btn').innerText = '📷'; }">
                                 </div>
                                 <button onclick="sendMessage()">Send</button>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="roster-sidebar">
                         <h4>Users Online</h4>
                         <ul id="roster"></ul>
@@ -600,14 +636,14 @@
     </div>
 
     <script>
-        const BACKEND_URL = "https://chat-website-kd6i.onrender.com"; 
+        const BACKEND_URL = "https://chat-website-kd6i.onrender.com";
         var socket = io(BACKEND_URL, { transports: ['websocket', 'polling'] });
         var username, room;
 
         // Dark Mode Logic
         const themeBtn = document.getElementById('theme-toggle');
         const picker = document.querySelector('emoji-picker');
-        
+
         function applyTheme(isDark) {
             if (isDark) {
                 document.body.classList.add('dark-mode');
@@ -652,7 +688,7 @@
         });
 
         // Socket Logic
-        socket.on('connect', function() {
+        socket.on('connect', function () {
             var s = document.getElementById('status');
             s.innerText = "Connected";
             s.style.color = "#28a745"; // Success green
@@ -663,24 +699,24 @@
             }
         });
 
-        socket.on('disconnect', function() {
+        socket.on('disconnect', function () {
             var s = document.getElementById('status');
             s.innerText = "Reconnecting...";
             s.style.color = "var(--danger)";
         });
 
-        socket.on('join_error', function(data) {
+        socket.on('join_error', function (data) {
             alert(data.error);
             document.getElementById('chat').style.display = 'none';
             document.getElementById('setup').style.display = 'flex';
             document.getElementById('messages').innerHTML = '';
         });
 
-        socket.on('create_error', function(data) {
+        socket.on('create_error', function (data) {
             alert(data.error);
         });
 
-        socket.on('create_success', function(data) {
+        socket.on('create_success', function (data) {
             alert("Room '" + data.room + "' created! You can now join it.");
             document.getElementById('join_room').value = data.room;
             if (document.getElementById('create_is_private').checked) {
@@ -696,22 +732,22 @@
             var isPrivate = document.getElementById('create_is_private').checked;
             var password = document.getElementById('create_password').value;
             if (!r) return alert("Room name is required.");
-            socket.emit('create_room', {room: r, limit: limit, is_private: isPrivate, password: password});
+            socket.emit('create_room', { room: r, limit: limit, is_private: isPrivate, password: password });
         }
 
         var userColor;
         var notifySound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
         var typingTimeout;
 
-        document.getElementById('my_message').addEventListener('input', function() {
-            socket.emit('typing', {is_typing: true});
+        document.getElementById('my_message').addEventListener('input', function () {
+            socket.emit('typing', { is_typing: true });
             clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(function() {
-                socket.emit('typing', {is_typing: false});
+            typingTimeout = setTimeout(function () {
+                socket.emit('typing', { is_typing: false });
             }, 1500);
         });
 
-        socket.on('typing', function(data) {
+        socket.on('typing', function (data) {
             var typDiv = document.getElementById('typing_indicator');
             if (data.is_typing) {
                 typDiv.innerText = data.user + " is typing...";
@@ -720,11 +756,11 @@
             }
         });
 
-        socket.on('room_users', function(users) {
+        socket.on('room_users', function (users) {
             var roster = document.getElementById('roster');
             if (!roster) return;
             roster.innerHTML = '';
-            users.forEach(function(u) {
+            users.forEach(function (u) {
                 var li = document.createElement('li');
                 li.innerHTML = `<span class="dot" style="background-color: ${u.color}"></span> <span>${u.name}</span>`;
                 roster.appendChild(li);
@@ -750,7 +786,7 @@
             document.getElementById('chat').style.display = 'none';
             document.getElementById('setup').style.display = 'flex';
             document.getElementById('messages').innerHTML = '';
-            
+
             // Clear so auto-reconnect doesn't put us back in
             username = null;
             room = null;
@@ -765,7 +801,7 @@
             // Handle Image
             if (file) {
                 var reader = new FileReader();
-                reader.onload = function(evt) {
+                reader.onload = function (evt) {
                     socket.emit('message', {
                         msg: evt.target.result,
                         room: room,
@@ -774,16 +810,16 @@
                     });
                 };
                 reader.readAsDataURL(file);
-                fileInput.value = ''; 
+                fileInput.value = '';
                 document.getElementById('upload-btn').classList.remove('has-file');
                 document.getElementById('upload-btn').innerText = '📷';
             }
 
             // Handle Text
             if (msg.trim() !== "") {
-                socket.emit('message', { 
-                    msg: msg, 
-                    room: room, 
+                socket.emit('message', {
+                    msg: msg,
+                    room: room,
                     username: username,
                     type: 'text'
                 });
@@ -800,7 +836,7 @@
         function appendMessage(data) {
             var messagesDiv = document.getElementById('messages');
             var isOwn = data.user === username;
-            var ts = data.timestamp ? data.timestamp.split(' ')[1] : ""; 
+            var ts = data.timestamp ? data.timestamp.split(' ')[1] : "";
 
             if (typeof data === 'string') {
                 var d = document.createElement('div');
@@ -810,7 +846,7 @@
             } else {
                 var d = document.createElement('div');
                 d.className = `msg-container ${isOwn ? 'msg-own' : 'msg-other'}`;
-                
+
                 var c = data.color || '#000000';
                 if (document.body.classList.contains('dark-mode') && c === '#000000') {
                     c = '#e0e0e0'; // Adjust default black to white in dark mode
@@ -820,7 +856,7 @@
                                     <span class="msg-name" style="color: ${c}">${data.user}</span>
                                     ${ts ? `<span class="msg-time">${ts}</span>` : ''}
                                   </div>`;
-                
+
                 var bubbleHTML = '';
                 if (data.type === 'image') {
                     // Re-scroll when image fully loads to prevent scrolling issues
@@ -828,12 +864,12 @@
                 } else {
                     var urlRegex = /(https?:\/\/[^\s]+)/g;
                     var safeMsg = data.msg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                    var formattedText = safeMsg.replace(urlRegex, function(url) {
+                    var formattedText = safeMsg.replace(urlRegex, function (url) {
                         return '<a href="' + url + '" target="_blank" style="color: inherit; text-decoration: underline; font-weight: 500;">' + url + '</a>';
                     });
                     bubbleHTML = `<div class="msg-bubble">${formattedText}</div>`;
                 }
-                
+
                 d.innerHTML = headerHTML + bubbleHTML;
                 messagesDiv.appendChild(d);
             }
@@ -843,7 +879,7 @@
         socket.on('message', function (data) {
             appendMessage(data);
             if (data.user && data.user !== username) {
-                notifySound.play().catch(function(e) {});
+                notifySound.play().catch(function (e) { });
             }
         });
 
@@ -882,4 +918,5 @@
         });
     </script>
 </body>
+
 </html>
